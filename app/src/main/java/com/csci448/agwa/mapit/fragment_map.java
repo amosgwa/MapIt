@@ -1,6 +1,7 @@
 package com.csci448.agwa.mapit;
 
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.pm.PackageManager;
 import android.location.Location;
 import android.os.Bundle;
@@ -8,7 +9,9 @@ import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.Fragment;
+import android.support.v4.app.FragmentActivity;
 import android.support.v4.content.ContextCompat;
+import android.support.v7.app.AlertDialog;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -19,6 +22,7 @@ import android.widget.TextView;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.location.places.Places;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
@@ -39,6 +43,7 @@ public class fragment_map extends Fragment implements
     private static final String TAG = "<MAP>";
     private Context context;
     private LayoutInflater mInflater;
+    private FragmentActivity mActivity;
 
     private GoogleMap mMap;
     private GoogleApiClient mGoogleApiClient;
@@ -64,12 +69,29 @@ public class fragment_map extends Fragment implements
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
 
-        context = this.getActivity().getApplicationContext();
         mInflater = inflater;
+        mActivity = this.getActivity();
+        context = mActivity.getApplicationContext();
 
         View v = inflater.inflate(R.layout.fragment_map, container, false);
-
         return v;
+    }
+
+    @Override
+    public void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+
+        // Build the Play services client for use by the Fused Location Provider and the Places API.
+        // Use the addApi() method to request the Google Places API and the Fused Location Provider.
+        mGoogleApiClient = new GoogleApiClient.Builder(this.getActivity())
+                .enableAutoManage(this.getActivity() /* FragmentActivity */,
+                        this /* OnConnectionFailedListener */)
+                .addConnectionCallbacks(this)
+                .addApi(LocationServices.API)
+                .addApi(Places.GEO_DATA_API)
+                .addApi(Places.PLACE_DETECTION_API)
+                .build();
+        mGoogleApiClient.connect();
     }
 
     @Override
@@ -77,7 +99,7 @@ public class fragment_map extends Fragment implements
         // Build the mpa.
         SupportMapFragment mapFragment = (SupportMapFragment) this.getChildFragmentManager()
                 .findFragmentById(R.id.map);
-
+        Log.d(TAG, "Connected");
         mapFragment.getMapAsync(this);
     }
 
@@ -97,6 +119,7 @@ public class fragment_map extends Fragment implements
     @Override
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
+        mMap.setPadding(0,50,0,0);
 
         mMap.setOnInfoWindowClickListener(new GoogleMap.OnInfoWindowClickListener() {
 
@@ -208,8 +231,7 @@ public class fragment_map extends Fragment implements
             mMap.setMyLocationEnabled(true);
             mMap.getUiSettings().setMyLocationButtonEnabled(true);
         } else {
-            mMap.setMyLocationEnabled(false);
-            mMap.getUiSettings().setMyLocationButtonEnabled(false);
+            // The user hasn't granted permission.
         }
     }
 }

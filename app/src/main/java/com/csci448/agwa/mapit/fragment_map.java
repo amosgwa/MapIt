@@ -1,7 +1,6 @@
 package com.csci448.agwa.mapit;
 
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.pm.PackageManager;
 import android.location.Location;
 import android.os.Bundle;
@@ -13,12 +12,10 @@ import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentActivity;
 import android.support.v4.content.ContextCompat;
-import android.support.v7.app.AlertDialog;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.FrameLayout;
 import android.widget.TextView;
 
 import com.google.android.gms.common.ConnectionResult;
@@ -41,6 +38,10 @@ import java.util.HashMap;
 
 /**
  * Created by amosgwa on 4/9/17.
+ * TODO :
+ * Add database
+ * Query marker data from weather
+ * Clean all markers and database
  */
 
 public class fragment_map extends Fragment implements
@@ -49,12 +50,16 @@ public class fragment_map extends Fragment implements
         GoogleApiClient.OnConnectionFailedListener{
 
     private static final String TAG = "<MAP>";
-    private Context context;
+    private Context mContext;
     private LayoutInflater mInflater;
     private FragmentActivity mActivity;
     private View mView;
 
+    // Data pins
     private HashMap<String, Pin> mPins = new HashMap<String, Pin>();
+
+    // Database
+    private PinsDataSource datasource;
 
     private GoogleMap mMap;
     private GoogleApiClient mGoogleApiClient;
@@ -80,10 +85,8 @@ public class fragment_map extends Fragment implements
     // Inflate the fragment in the parent activity.
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-
+        // Declare the inflater from the parent.
         mInflater = inflater;
-        mActivity = this.getActivity();
-        context = mActivity.getApplicationContext();
 
         View v = inflater.inflate(R.layout.fragment_map, container, false);
 
@@ -93,6 +96,16 @@ public class fragment_map extends Fragment implements
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        // Declare the mContext here
+        mActivity = this.getActivity();
+        mContext = mActivity.getApplicationContext();
+
+        // Open database.
+        datasource = new PinsDataSource(mContext);
+        datasource.open();
+
+        // Generate dummy data.
+        generateDummyData();
 
         // Build the Play services client for use by the Fused Location Provider and the Places API.
         // Use the addApi() method to request the Google Places API and the Fused Location Provider.
@@ -214,8 +227,26 @@ public class fragment_map extends Fragment implements
         // Get the current location of the device and set the position of the map.
         getDeviceLocation();
 
+        // Map is ready and query all of the pins.
+        ArrayList<Pin> values = datasource.getAllPins();
+
+        // Generate the pins hash map.
+        generateMarkers(values);
+
         // Show makers.
-        putMarkers();
+        // putMarkers();
+    }
+
+    /**
+     * Generate Markers and build a hashmap with markers' id and their pins.
+     * @param values
+     */
+    private void generateMarkers(ArrayList<Pin> values) {
+        for(Pin pin : values) {
+            Marker marker = mMap.addMarker(new MarkerOptions()
+                    .position(pin.getPos()));
+            mPins.put(marker.getId(), pin);
+        }
     }
 
     /**
@@ -299,7 +330,7 @@ public class fragment_map extends Fragment implements
         Snackbar.make(getView(), first_line + "\n" + second_line, Snackbar.LENGTH_LONG).show();
     }
 
-    private void putMarkers() {
+    private void generateDummyData() {
         // Query data form the database.
         LatLng a = new LatLng(39.744850, -105.231654);
         LatLng b = new LatLng(39.742961, -105.230570);
@@ -310,13 +341,8 @@ public class fragment_map extends Fragment implements
         positions.add(c);
 
         for(LatLng pos : positions) {
-            // Add a marker for the selected place, with an info window
-            // showing information about that place.
-            Marker marker = mMap.addMarker(new MarkerOptions()
-                    .position(pos));
-            Pin pin = new Pin(new Date(), marker.getPosition());
-
-            mPins.put(marker.getId(), pin);
+            Pin pin = new Pin(new Date(), pos);
+            datasource.addPin(pin);
         }
     }
 

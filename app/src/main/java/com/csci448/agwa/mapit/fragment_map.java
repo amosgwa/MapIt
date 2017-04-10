@@ -7,6 +7,7 @@ import android.location.Location;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.Fragment;
@@ -35,6 +36,8 @@ import com.google.android.gms.maps.model.MarkerOptions;
 
 import java.lang.reflect.Array;
 import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
 
 /**
  * Created by amosgwa on 4/9/17.
@@ -50,6 +53,8 @@ public class fragment_map extends Fragment implements
     private LayoutInflater mInflater;
     private FragmentActivity mActivity;
     private View mView;
+
+    private HashMap<String, Pin> mPins = new HashMap<String, Pin>();
 
     private GoogleMap mMap;
     private GoogleApiClient mGoogleApiClient;
@@ -71,6 +76,7 @@ public class fragment_map extends Fragment implements
     public static fragment_map newInstance() {
         return new fragment_map();
     }
+
     // Inflate the fragment in the parent activity.
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
@@ -99,6 +105,34 @@ public class fragment_map extends Fragment implements
                 .addApi(Places.PLACE_DETECTION_API)
                 .build();
         mGoogleApiClient.connect();
+
+        // Add listener to the floating button for checking in.
+        FloatingActionButton checkInFab = (FloatingActionButton) this.getActivity().findViewById(R.id.check_in_button);
+        checkInFab.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                Log.d(TAG, "Checked In");
+                checkIn();
+            }
+        });
+    }
+
+    private void checkIn() {
+        // Move to current location.
+        getDeviceLocation();
+        // Extract latlng for current location.
+        LatLng currLocation = new LatLng(mLastKnownLocation.getLatitude(), mLastKnownLocation.getLongitude());
+        // Add marker to the current location.
+        Marker marker = mMap.addMarker(new MarkerOptions()
+                .position(currLocation));
+        // First create a new pin.
+        Pin pin = new Pin(new Date(), marker.getPosition());
+        // Append to the local variable.
+        mPins.put(marker.getId(), pin);
+        // Append to the database.
+        // Show info window for the check in.
+        marker.showInfoWindow();
+        // Show the snackbar.
+        showSnackBar(pin);
     }
 
     @Override
@@ -132,7 +166,14 @@ public class fragment_map extends Fragment implements
         mMap.setOnMarkerClickListener(new GoogleMap.OnMarkerClickListener(){
             @Override
             public boolean onMarkerClick(Marker marker) {
-                showSnackBar();
+                // Get the selected pin.
+                Pin selectedPin = mPins.get(marker.getId());
+                // Move the camera to the marker.
+                mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(selectedPin.getPos(), DEFAULT_ZOOM));
+                // Show the info window.
+                marker.showInfoWindow();
+                // Show the snack bar.
+                showSnackBar(selectedPin);
                 return true;
             }
         });
@@ -159,7 +200,6 @@ public class fragment_map extends Fragment implements
 
                 // Inflate the layouts for the info window.
                 View infoWindow = mInflater.inflate(R.layout.custom_info_contents, null);
-                FrameLayout fragmentContainerLayout = (FrameLayout) infoWindow.findViewById(R.id.map);
 
                 TextView latLngInfo = (TextView) infoWindow.findViewById(R.id.title);
                 latLngInfo.setText("lat/lng: ("+ String.valueOf(pos.latitude) + ","+ String.valueOf(pos.longitude) + ")");
@@ -208,15 +248,15 @@ public class fragment_map extends Fragment implements
         // Set the map's camera position to the current location of the device.
         if (mCameraPosition != null) {
             Log.d(TAG, "Camera Moved");
-            mMap.moveCamera(CameraUpdateFactory.newCameraPosition(mCameraPosition));
+            mMap.animateCamera(CameraUpdateFactory.newCameraPosition(mCameraPosition));
         } else if (mLastKnownLocation != null) {
             Log.d(TAG, "Location found");
-            mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(
+            mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(
                     new LatLng(mLastKnownLocation.getLatitude(),
                             mLastKnownLocation.getLongitude()), DEFAULT_ZOOM));
         } else {
             Log.d(TAG, "Current location is null. Using defaults.");
-            mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(mDefaultLocation, DEFAULT_ZOOM));
+            mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(mDefaultLocation, DEFAULT_ZOOM));
             mMap.getUiSettings().setMyLocationButtonEnabled(false);
         }
     }
@@ -253,8 +293,10 @@ public class fragment_map extends Fragment implements
         }
     }
 
-    private void showSnackBar() {
-        Snackbar.make(getView(), "Hello\nWorld", Snackbar.LENGTH_LONG).show();
+    private void showSnackBar(Pin pin) {
+        String first_line = "You were here : " + pin.getTime().toString();
+        String second_line = "The weather is nice";
+        Snackbar.make(getView(), first_line + "\n" + second_line, Snackbar.LENGTH_LONG).show();
     }
 
     private void putMarkers() {
@@ -270,8 +312,11 @@ public class fragment_map extends Fragment implements
         for(LatLng pos : positions) {
             // Add a marker for the selected place, with an info window
             // showing information about that place.
-            mMap.addMarker(new MarkerOptions()
+            Marker marker = mMap.addMarker(new MarkerOptions()
                     .position(pos));
+            Pin pin = new Pin(new Date(), marker.getPosition());
+
+            mPins.put(marker.getId(), pin);
         }
     }
 

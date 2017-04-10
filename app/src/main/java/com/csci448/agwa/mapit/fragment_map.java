@@ -30,6 +30,10 @@ import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
+import com.google.android.gms.maps.model.MarkerOptions;
+
+import java.lang.reflect.Array;
+import java.util.ArrayList;
 
 /**
  * Created by amosgwa on 4/9/17.
@@ -144,10 +148,10 @@ public class fragment_map extends Fragment implements
                 View infoWindow = mInflater.inflate(R.layout.custom_info_contents, null);
                 FrameLayout fragmentContainerLayout = (FrameLayout) infoWindow.findViewById(R.id.map);
 
-                TextView latLngInfo = (TextView) infoWindow.findViewById(R.id.info_window_lat_lng);
+                TextView latLngInfo = (TextView) infoWindow.findViewById(R.id.title);
                 latLngInfo.setText("lat/lng: ("+ String.valueOf(pos.latitude) + ","+ String.valueOf(pos.longitude) + ")");
 
-                return fragmentContainerLayout;
+                return infoWindow;
             }
         });
 
@@ -157,8 +161,8 @@ public class fragment_map extends Fragment implements
         // Get the current location of the device and set the position of the map.
         getDeviceLocation();
 
-        // Show kitchens
-        // putKitchenMarkers();
+        // Show makers.
+        putMarkers();
     }
 
     /**
@@ -234,4 +238,23 @@ public class fragment_map extends Fragment implements
             // The user hasn't granted permission.
         }
     }
+
+    private void putMarkers() {
+        // Query data form the database.
+        LatLng a = new LatLng(39.744850, -105.231654);
+        LatLng b = new LatLng(39.742961, -105.230570);
+        LatLng c = new LatLng(39.742062, -105.231214);
+        ArrayList<LatLng> positions = new ArrayList<LatLng>();
+        positions.add(a);
+        positions.add(b);
+        positions.add(c);
+
+        for(LatLng pos : positions) {
+            // Add a marker for the selected place, with an info window
+            // showing information about that place.
+            mMap.addMarker(new MarkerOptions()
+                    .position(pos));
+        }
+    }
+
 }

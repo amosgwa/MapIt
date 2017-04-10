@@ -7,6 +7,7 @@ import android.location.Location;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentActivity;
@@ -48,6 +49,7 @@ public class fragment_map extends Fragment implements
     private Context context;
     private LayoutInflater mInflater;
     private FragmentActivity mActivity;
+    private View mView;
 
     private GoogleMap mMap;
     private GoogleApiClient mGoogleApiClient;
@@ -78,6 +80,7 @@ public class fragment_map extends Fragment implements
         context = mActivity.getApplicationContext();
 
         View v = inflater.inflate(R.layout.fragment_map, container, false);
+
         return v;
     }
 
@@ -125,6 +128,16 @@ public class fragment_map extends Fragment implements
         mMap = googleMap;
         mMap.setPadding(0,50,0,0);
 
+        // On tapping the marker.
+        mMap.setOnMarkerClickListener(new GoogleMap.OnMarkerClickListener(){
+            @Override
+            public boolean onMarkerClick(Marker marker) {
+                showSnackBar();
+                return true;
+            }
+        });
+
+        // On tapping the popup.
         mMap.setOnInfoWindowClickListener(new GoogleMap.OnInfoWindowClickListener() {
 
             @Override
@@ -234,9 +247,14 @@ public class fragment_map extends Fragment implements
         if (mLocationPermissionGranted) {
             mMap.setMyLocationEnabled(true);
             mMap.getUiSettings().setMyLocationButtonEnabled(true);
+            mMap.getUiSettings().setMapToolbarEnabled(false);
         } else {
             // The user hasn't granted permission.
         }
+    }
+
+    private void showSnackBar() {
+        Snackbar.make(getView(), "Hello\nWorld", Snackbar.LENGTH_LONG).show();
     }
 
     private void putMarkers() {

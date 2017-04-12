@@ -1,4 +1,5 @@
 <resources>
     <string name="app_name">MapIt</string>
     <string name="weather_api">920ff5b8171b6adff94268a5271ef472</string>
+    <string name="clear_map">Clear Map</string>
 </resources>

@@ -3,6 +3,7 @@ package com.csci448.agwa.mapit;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.location.Location;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
@@ -14,6 +15,9 @@ import android.support.v4.app.FragmentActivity;
 import android.support.v4.content.ContextCompat;
 import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
@@ -35,6 +39,7 @@ import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 
 /**
  * Created by amosgwa on 4/9/17.
@@ -68,7 +73,7 @@ public class fragment_map extends Fragment implements
     // A default location (Sydney, Australia) and default zoom to use when location permission is
     // not granted.
     private final LatLng mDefaultLocation = new LatLng(-33.8523341, 151.2106085);
-    private static final int DEFAULT_ZOOM = 15;
+    private static final int DEFAULT_ZOOM = 16;
     private static final int PERMISSIONS_REQUEST_ACCESS_FINE_LOCATION = 1;
     private boolean mLocationPermissionGranted;
 
@@ -96,6 +101,9 @@ public class fragment_map extends Fragment implements
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        // Enable menu
+        setHasOptionsMenu(true);
+
         // Declare the mContext here
         mActivity = this.getActivity();
         mContext = mActivity.getApplicationContext();
@@ -105,7 +113,7 @@ public class fragment_map extends Fragment implements
         datasource.open();
 
         // Generate dummy data.
-        generateDummyData();
+        // generateDummyData();
 
         // Build the Play services client for use by the Fused Location Provider and the Places API.
         // Use the addApi() method to request the Google Places API and the Fused Location Provider.
@@ -129,6 +137,22 @@ public class fragment_map extends Fragment implements
         });
     }
 
+    @Override
+    public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
+        super.onCreateOptionsMenu(menu, inflater);
+        inflater.inflate(R.menu.fragment_map, menu);
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()){
+            case R.id.action_clear_map:
+                clearPins();
+            default:
+                return super.onOptionsItemSelected(item);
+        }
+    }
+
     private void checkIn() {
         // Move to current location.
         getDeviceLocation();
@@ -138,14 +162,26 @@ public class fragment_map extends Fragment implements
         Marker marker = mMap.addMarker(new MarkerOptions()
                 .position(currLocation));
         // First create a new pin.
-        Pin pin = new Pin(new Date(), marker.getPosition());
+        Pin addedPin = new Pin(new Date(), marker.getPosition());
         // Append to the local variable.
-        mPins.put(marker.getId(), pin);
+        mPins.put(marker.getId(), addedPin);
         // Append to the database.
+        datasource.addPin(addedPin);
         // Show info window for the check in.
         marker.showInfoWindow();
-        // Show the snackbar.
-        showSnackBar(pin);
+        // Get the weather info.
+        new FetchWeatherInfo().execute(addedPin);
+        //showSnackBar(pin);
+    }
+
+    private void clearPins() {
+        Log.d(TAG, "Clearing pins");
+        // Clear the map.
+        mPins.clear();
+        // Clear the database.
+        datasource.deletePins();
+        // Clear the pins on the map.
+        mMap.clear();
     }
 
     @Override
@@ -185,8 +221,9 @@ public class fragment_map extends Fragment implements
                 mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(selectedPin.getPos(), DEFAULT_ZOOM));
                 // Show the info window.
                 marker.showInfoWindow();
-                // Show the snack bar.
-                showSnackBar(selectedPin);
+                // Get the weather info.
+                new FetchWeatherInfo().execute(selectedPin);
+                //showSnackBar(selectedPin);
                 return true;
             }
         });
@@ -324,9 +361,28 @@ public class fragment_map extends Fragment implements
         }
     }
 
-    private void showSnackBar(Pin pin) {
+    private class FetchWeatherInfo extends AsyncTask<Pin,Void,WeatherItem> {
+
+        Pin pin;
+
+        @Override
+        protected WeatherItem doInBackground(Pin... params) {
+            this.pin = params[0];
+
+            return new WeatherFetchr().fetchWeather(this.pin);
+        }
+
+        @Override
+        protected void onPostExecute(WeatherItem weatherItem) {
+            // Data has been queried. Show the snack bar.
+            showSnackBar(this.pin, weatherItem);
+        }
+    }
+
+    private void showSnackBar(Pin pin, WeatherItem weatherItem) {
+        // Query the data from Weather
         String first_line = "You were here : " + pin.getTime().toString();
-        String second_line = "The weather is nice";
+        String second_line = weatherItem.toString();
         Snackbar.make(getView(), first_line + "\n" + second_line, Snackbar.LENGTH_LONG).show();
     }
 

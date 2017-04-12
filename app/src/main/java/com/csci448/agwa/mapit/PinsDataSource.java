@@ -42,7 +42,6 @@ public class PinsDataSource {
     }
 
     private static ContentValues getContentValues(Pin pin) {
-        Log.d(TAG, pin.getPos().toString());
         ContentValues values = new ContentValues();
         values.put(MySQLiteHelper.COLUMN_TIME, pin.getTime().getTime());
         values.put(MySQLiteHelper.COLUMN_LAT, pin.getPos().latitude);
@@ -70,6 +69,7 @@ public class PinsDataSource {
         while(!cursor.isAfterLast()) {
             Pin pin = cursorToPin(cursor);
             pins.add(pin);
+            Log.d(TAG, pin.getPos().toString());
             cursor.moveToNext();
         }
         // Close the cursor
